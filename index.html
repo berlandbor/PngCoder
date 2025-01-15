@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steganography</title>
+</head>
+<body>
+    <h1>Скрыть пароль в изображении</h1>
+    <input type="file" id="inputImage" accept="image/*">
+    <input type="text" id="secretText" placeholder="Введите пароль">
+    <button id="encodeButton">Скрыть</button>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <a id="downloadLink" download="encoded_image.png">Скачать изображение</a>
+
+    <script>
+        document.getElementById('encodeButton').addEventListener('click', () => {
+            const fileInput = document.getElementById('inputImage');
+            const secretText = document.getElementById('secretText').value;
+            if (!fileInput.files[0] || !secretText) {
+                alert("Загрузите изображение и введите пароль!");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.getElementById('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const pixels = imageData.data;
+
+                    // Преобразуем текст в бинарный вид
+                    const binaryData = secretText.split('').map(char =>
+                        char.charCodeAt(0).toString(2).padStart(8, '0')
+                    ).join('') + '1111111111111110'; // Стоп-маркер
+
+                    let dataIndex = 0;
+                    for (let i = 0; i < pixels.length; i += 4) { // Проходим по всем пикселям (RGBA)
+                        if (dataIndex < binaryData.length) {
+                            // Изменяем младший бит красного канала
+                            pixels[i] = (pixels[i] & ~1) | parseInt(binaryData[dataIndex], 2);
+                            dataIndex++;
+                        }
+                    }
+
+                    ctx.putImageData(imageData, 0, 0);
+
+                    const downloadLink = document.getElementById('downloadLink');
+                    downloadLink.href = canvas.toDataURL();
+                    downloadLink.style.display = 'block';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        });
+    </script>
+</body>
+</html>
